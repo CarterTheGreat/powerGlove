@@ -1,8 +1,9 @@
 #include <Wire.h>
 #include <ADXL345.h>
-#include <RH_ASK.h>
 #include <SPI.h>
 #include <SoftwareSerial.h>
+#include <nRF24L01.h>
+#include <RF24.h>
 
 /*
  * Power Glove Mk. III
@@ -18,35 +19,31 @@
  * 
  * Button support commented out
  */
+ 
 //Running 
-String runningS;
-boolean runningB;
-
-//Accel---------------------------------------
-ADXL345 adxl;
-boolean on;
-int x,y,z;  
-int lastZ;
-String xString,yString,zString;
-
-//Buttons------------------------------------
-//int leftButton  = 11;
-//int rightButton = 12;
-
-int leftButtonState,rightButtonState;
+  String runningS;
+  boolean runningB;
 
 //Comm
-RH_ASK driver;
+  RF24 radio(7, 8); //CE, CSN
+  const byte addresses[][6] = {00001, 00002};
+  String data, dataIn;
+  
+//Accel
+  ADXL345 adxl;
+  boolean on;
+  int x,y,z;
+  String xS,yS,zS;
+
 
 void setup() {
   
-  
   Serial.begin(9600);
-  if (!driver.init())
-         Serial.println("init failed");
-         
-  //pinMode(leftButton, INPUT_PULLUP);
-  //pinMode(rightButton, INPUT_PULLUP);
+
+  radio.begin();
+  radio.openWritingPipe(addresses[1]);// 00002
+  radio.openReadingPipe(addresses[0]);// 00001
+  radio.setPALevel(RF24_PA_MIN);
   
   adxl.powerOn();
 
@@ -94,78 +91,60 @@ void setup() {
   adxl.setInterrupt( ADXL345_INT_FREE_FALL_BIT,  1);
   adxl.setInterrupt( ADXL345_INT_ACTIVITY_BIT,   1);
   adxl.setInterrupt( ADXL345_INT_INACTIVITY_BIT, 1);
+
+  on = true;
+  runningB = true;
 }
 
 void loop() {
 
-  on = true;
-  runningB = true;
-  
-  //Variable Assignment-------------------------------------------------------------------------
-  
-  //Running
-  if(runningB){
-    runningS = "1";
-  }else runningS = "0";
-  
-  //Accel
-  adxl.readXYZ(&x, &y, &z);
-  double xyz[3];
-  double ax,ay,az;
-  adxl.getAcceleration(xyz);
-  ax = xyz[0];
-  ay = xyz[1];
-  az = xyz[2];
-
-  xString = String(x);
-  yString = String(y);
-  zString = String(z);
-
-  //Buttons
-  leftButtonState = 0;
-  rightButtonState = 0;
-  //leftButtonState = digitalRead(leftButton);
-  //rightButtonState = digitalRead(rightButton);
-  
-  //Bluetooth Send----------------------------------------------------------------------------
-  /*
-    Serial.print('<');
-    Serial.print(runningS);
-    Serial.print('/');
-    Serial.print(x);
-    Serial.print('/');
-    Serial.print(y);
-    Serial.print('/');
-    Serial.print(z );
-    Serial.print('/');
-    Serial.print(leftButtonState);
-    Serial.print('/');
-    Serial.print(rightButtonState);
-    Serial.print('>');
-    Serial.println();  
- */
-
- //433 MHz radio send------------------------------------------------------------------------------
-
-    String data = "<";
-    data.concat(runningS);
-    data.concat("/");
-    data.concat(x);
-    data.concat("/");
-    data.concat(y);
-    data.concat("/");
-    data.concat(z);
-    data.concat("/");
-    data.concat(leftButtonState);
-    data.concat("/");
-    data.concat(rightButtonState);
-    data.concat(">");
-    Serial.println("Sent: "+data);
-
-    const char *msg = data.c_str();
-    
-
-    driver.send((uint8_t *)msg, strlen(msg));
-    driver.waitPacketSent();
+  delay(5);
  
+  radio.stopListening();
+    //Running
+      if(runningB){
+        runningS = "1";
+      }else runningS = "0";
+    
+    //Accel
+      adxl.readXYZ(&x, &y, &z);
+      double xyz[3];
+      double ax,ay,az;
+      adxl.getAcceleration(xyz);
+      ax = xyz[0];
+      ay = xyz[1];
+      az = xyz[2];
+  
+      xS = String(x);
+      yS = String(y);
+      zS = String(z);
+
+    //Flex
+
+    //Collect
+      data = "<";
+      data.concat(runningS);
+      data.concat("/");
+      data.concat(xS);
+      data.concat("/");
+      data.concat(yS);
+      data.concat("/");
+      data.concat(zS);
+      data.concat("/");
+      data.concat(f1S);
+      data.concat("/");
+      data.concat(f1S);
+      data.concat(">");
+
+    //Send
+      radio.write(&data, sizeof(data));
+
+
+  delay(5);
+
+  radio.startListening();
+  while(!radio.avaliable());
+  radio.read(&dataIn, sizeof(datain));
+  Serial.println(dataIn);
+   
 }
