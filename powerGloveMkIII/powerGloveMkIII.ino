@@ -2,32 +2,31 @@
 #include <ADXL345.h>
 #include <SPI.h>
 #include <SoftwareSerial.h>
-#include <nRF24L01.h>
-#include <RF24.h>
+#include "RF24.h"
 
 /*
  * Power Glove Mk. III
  * Carter Watts
  * 
  * Uses: 
- *  433 MHz radio
+ *  nRF24L01
  *  ADXL345 accel
- *
- * 433 MHz radio implemented
- * BT implemented
+ * 
+ * 
  * Accel implemented
  * 
- * Button support commented out
  */
  
 //Running 
   String runningS;
   boolean runningB;
 
-//Comm
-  RF24 radio(7, 8); //CE, CSN
-  const byte addresses[][6] = {00001, 00002};
-  String data, dataIn;
+//Comm 
+  RF24 radio(7, 8);\
+  byte addresses[2][6] = {"XXXXX","XXXXX"};
+  String data = " ";
+  char dataOut[28] = " ";
+  String dataIn;
   
 //Accel
   ADXL345 adxl;
@@ -35,15 +34,15 @@
   int x,y,z;
   String xS,yS,zS;
 
+//Flex
+  int f1, f2;
+  String f1S, f2S;
 
 void setup() {
   
-  Serial.begin(9600);
+  Serial.begin(115200);
 
-  radio.begin();
-  radio.openWritingPipe(addresses[1]);// 00002
-  radio.openReadingPipe(addresses[0]);// 00001
-  radio.setPALevel(RF24_PA_MIN);
+  Serial.println(F("Glove started"));
   
   adxl.powerOn();
 
@@ -94,13 +93,20 @@ void setup() {
 
   on = true;
   runningB = true;
+
+
+  Serial.println( F("Glove started"));
+  
 }
 
 void loop() {
-
+  radio.begin();
+  radio.setPALevel(RF24_PA_MAX);
+  radio.openWritingPipe(addresses[1]);
+  radio.openReadingPipe(1, addresses[0]);
+  
   delay(5);
  
-  radio.stopListening();
     //Running
       if(runningB){
         runningS = "1";
@@ -121,6 +127,9 @@ void loop() {
 
     //Flex
 
+      f1S = "xxx";
+      f2S = "xxx";
+      
     //Collect
       data = "<";
       data.concat(runningS);
@@ -136,15 +145,27 @@ void loop() {
       data.concat(f1S);
       data.concat(">");
 
+      data.toCharArray(dataOut, 28);
+      
     //Send
-      radio.write(&data, sizeof(data));
+      radio.stopListening();
+      //Attempts to send w/ error checking
+      if (!radio.write( &dataOut, sizeof(dataOut) )){
+        Serial.println(F("Failed on sending"));
+      }else{
+        Serial.print(F("Sent: "));
+        Serial.println(data);
+      }
 
-
+  /*Recieving to implement after successful motor test
   delay(5);
 
   radio.startListening();
   while(!radio.avaliable());
   radio.read(&dataIn, sizeof(datain));
   Serial.println(dataIn);
-   
+  */
+
+  delay(100);
+  
 }
