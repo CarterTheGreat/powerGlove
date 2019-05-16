@@ -1,20 +1,23 @@
 #include <Wire.h>
 #include <ADXL345.h>
-#include <SPI.h>
 #include <SoftwareSerial.h>
+#include "RF24Network.h"
 #include "RF24.h"
-
+#include "RF24Mesh.h"
+#include <SPI.h>
+//Include eeprom.h for AVR (Uno, Nano) etc. except ATTiny
+#include <EEPROM.h>
 /*
  * Power Glove Mk. III
  * Carter Watts
  * 
  * Uses: 
- *  nRF24L01
+ *  nRF24L01 - mesh
  *  ADXL345 accel
  * 
  * 
  * Accel implemented
- * 
+ * Mesh to be implemented
  */
  
 //Running 
@@ -22,11 +25,12 @@
   boolean runningB;
 
 //Comm 
-  RF24 radio(7, 8);\
-  byte addresses[2][6] = {"XXXXX","XXXXX"};
-  String data = " ";
-  char dataOut[28] = " ";
-  String dataIn;
+  RF24 radio(7,8);
+  RF24Network network(radio);
+  RF24Mesh mesh(radio,network);
+  struct payload_t {
+    String data;
+  };
   
 //Accel
   ADXL345 adxl;
@@ -42,7 +46,7 @@ void setup() {
   
   Serial.begin(115200);
 
-  Serial.println(F("Glove started"));
+  Serial.println(F("Glove starting"));
   
   adxl.powerOn();
 
@@ -94,18 +98,19 @@ void setup() {
   on = true;
   runningB = true;
 
+  // Set the nodeID to 0 for the master node
+  mesh.setNodeID(0);
+  Serial.println(mesh.getNodeID());
+  // Connect to the mesh
+  mesh.begin();  
 
   Serial.println( F("Glove started"));
   
 }
 
 void loop() {
-  radio.begin();
-  radio.setPALevel(RF24_PA_MAX);
-  radio.openWritingPipe(addresses[1]);
-  radio.openReadingPipe(1, addresses[0]);
-  
-  delay(5);
+  mesh.begin();
+  mesh.DHCP();
  
     //Running
       if(runningB){
@@ -131,7 +136,7 @@ void loop() {
       f2S = "xxx";
       
     //Collect
-      data = "<";
+      String data = "<";
       data.concat(runningS);
       data.concat("/");
       data.concat(xS);
@@ -145,27 +150,49 @@ void loop() {
       data.concat(f1S);
       data.concat(">");
 
-      data.toCharArray(dataOut, 28);
-      
-    //Send
-      radio.stopListening();
-      //Attempts to send w/ error checking
-      if (!radio.write( &dataOut, sizeof(dataOut) )){
-        Serial.println(F("Failed on sending"));
-      }else{
-        Serial.print(F("Sent: "));
-        Serial.println(data);
-      }
+      sendData(data, 1);
+      sendData(data, 2);
+      //data.toCharArray(dataOut, 28);
 
-  /*Recieving to implement after successful motor test
-  delay(5);
-
-  radio.startListening();
-  while(!radio.avaliable());
-  radio.read(&dataIn, sizeof(datain));
-  Serial.println(dataIn);
-  */
-
-  delay(100);
+    if(network.available())
+      recieve();
   
+}
+
+void sendData(String data, int target){
+
+    for (int i = 0; i < mesh.addrListTop; i++) {
+      payload_t payload = {data};
+
+      //WHAT IS HAPPENING HERE AND BELOW
+      if (mesh.addrList[i].nodeID == target) {  //Searching for node one from address list
+        payload = {data};
+      }
+      
+      RF24NetworkHeader header(mesh.addrList[i].address, OCT); //Constructing a header
+      Serial.println(network.write(header, &payload, sizeof(payload)) == target ? "Send OK" : "Send Fail"); //Sending an message
+      
+   }
+}
+
+String recieve(){
+  String dataIn;
+  
+  RF24NetworkHeader header;
+  network.peek(header);
+  switch(header.type){
+      // Display the incoming millis() values from the sensor nodes
+    case 'M': 
+      network.read(header,&dataIn,sizeof(dataIn));
+      Serial.print(dataIn);
+      Serial.print(" from RF24Network address 0");
+      Serial.println(header.from_node, OCT);
+      break;
+    default: 
+      network.read(header,0,0); 
+      Serial.println(header.type);
+      break;
+    }
+  
+  return dataIn;
 }
