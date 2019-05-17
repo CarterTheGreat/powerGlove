@@ -1,7 +1,5 @@
 #include <Wire.h>
 #include <ADXL345.h>
-#include <RH_ASK.h>
-#include <SPI.h>
 #include <SoftwareSerial.h>
 
 /*
@@ -9,13 +7,14 @@
  * Carter Watts
  * 
  * Uses: 
+ *  HC-06 bt module
  *  ADXL345 accel
  *
+ * BT implemented
  * Accel implemented
+ * Button support commented out
+ * 
  */
-//Running 
-String runningS;
-boolean runningB;
 
 //Accel---------------------------------------
 ADXL345 adxl;
@@ -24,18 +23,17 @@ int x,y,z;
 int lastZ;
 String xString,yString,zString;
 
-int leftButtonState,rightButtonState;
+//Buttons------------------------------------
+//int leftButton  = 11;
+//int rightButton = 12;
 
-//Comm
-RH_ASK driver;
+//int leftButtonState,rightButtonState;
 
 void setup() {
   
   
   Serial.begin(9600);
-  if (!driver.init())
-         Serial.println("init failed");
-         
+
   //pinMode(leftButton, INPUT_PULLUP);
   //pinMode(rightButton, INPUT_PULLUP);
   
@@ -90,49 +88,38 @@ void setup() {
 void loop() {
 
   on = true;
-  runningB = true;
   
   //Variable Assignment-------------------------------------------------------------------------
   
-  //Running
-  if(runningB){
-    runningS = "1";
-  }else runningS = "0";
-  
   //Accel
-  adxl.readXYZ(&x, &y, &z);
-  double xyz[3];
-  double ax,ay,az;
-  adxl.getAcceleration(xyz);
-  ax = xyz[0];
-  ay = xyz[1];
-  az = xyz[2];
-
-  xString = String(x);
-  yString = String(y);
-  zString = String(z);
-
- //433 MHz radio send------------------------------------------------------------------------------
+    adxl.readXYZ(&x, &y, &z);
+    double xyz[3];
+    double ax,ay,az;
+    adxl.getAcceleration(xyz);
+    ax = xyz[0];
+    ay = xyz[1];
+    az = xyz[2];
   
-    String data = "<";
-    data.concat(runningS);
-    data.concat("/");
-    data.concat(x);
-    data.concat("/");
-    data.concat(y);
-    data.concat("/");
-    data.concat(z);
-    data.concat("/");
-    data.concat(leftButtonState);
-    data.concat("/");
-    data.concat(rightButtonState);
-    data.concat(">");
-    Serial.println("Sent: "+data);
+    xString = String(x);
+    yString = String(y);
+    zString = String(z);
 
-    const char *msg = data.c_str();
-    
-
-    driver.send((uint8_t *)msg, strlen(msg));
-    driver.waitPacketSent();
+ 
+  //Bluetooth Send----------------------------------------------------------------------------
+  
+    Serial.print('<');
+    Serial.print(x);
+    Serial.print('/');
+    Serial.print(y);
+    Serial.print('/');
+    Serial.print(z );
+    Serial.print('/');
+    Serial.print("xxx");
+    Serial.print('/');
+    Serial.print("xxx");
+    Serial.print('>');
+    Serial.println();  
+ 
+  
  
 }
