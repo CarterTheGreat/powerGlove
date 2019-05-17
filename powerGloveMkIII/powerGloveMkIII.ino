@@ -9,13 +9,9 @@
  * Carter Watts
  * 
  * Uses: 
- *  HC-06 bt module
  *  ADXL345 accel
  *
- * BT implemented
  * Accel implemented
- * Button support commented out
- * 
  */
 //Running 
 String runningS;
@@ -27,10 +23,6 @@ boolean on;
 int x,y,z;  
 int lastZ;
 String xString,yString,zString;
-
-//Buttons------------------------------------
-//int leftButton  = 11;
-//int rightButton = 12;
 
 int leftButtonState,rightButtonState;
 
@@ -120,32 +112,8 @@ void loop() {
   yString = String(y);
   zString = String(z);
 
-  //Buttons
-  leftButtonState = 0;
-  rightButtonState = 0;
-  //leftButtonState = digitalRead(leftButton);
-  //rightButtonState = digitalRead(rightButton);
-  
-  //Bluetooth Send----------------------------------------------------------------------------
-  /*
-    Serial.print('<');
-    Serial.print(runningS);
-    Serial.print('/');
-    Serial.print(x);
-    Serial.print('/');
-    Serial.print(y);
-    Serial.print('/');
-    Serial.print(z );
-    Serial.print('/');
-    Serial.print(leftButtonState);
-    Serial.print('/');
-    Serial.print(rightButtonState);
-    Serial.print('>');
-    Serial.println();  
- */
-
  //433 MHz radio send------------------------------------------------------------------------------
-
+  
     String data = "<";
     data.concat(runningS);
     data.concat("/");
