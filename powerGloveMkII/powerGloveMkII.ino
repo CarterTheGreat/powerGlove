@@ -1,129 +1,41 @@
 #include <Wire.h>
 #include <ADXL345.h>
-#include <SPI.h>
 #include <SoftwareSerial.h>
-#include <nRF24L01.h>
-#include <RF24.h>
-#include "RF24.h"
-
 
 /*
- * Power Glove Mk. III
+ * Power Glove Mk. II 
  * Carter Watts
  * 
  * Uses: 
- *  433 MHz radio
- *  nRF24L01
+ *  HC-06 bt module
  *  ADXL345 accel
- * 
- * 
+ *
+ * BT implemented
  * Accel implemented
+ * Button support commented out
+ * 
  */
 
-//Running 
- String runningS;
- boolean runningB;
+//Accel---------------------------------------
+ADXL345 adxl;
+boolean on;
+int x,y,z;  
+int lastZ;
+String xString,yString,zString;
 
-//Comm 
-  RF24 radio(7, 8);\
-  byte addresses[2][6] = {"XXXXX","XXXXX"};
-  String data = " ";
-  char dataOut[28] = " ";
-  String dataIn;
+//Buttons------------------------------------
+//int leftButton  = 11;
+//int rightButton = 12;
 
-//Accel
-  ADXL345 adxl;
-  boolean on;
-  int x,y,z;
-  String xS,yS,zS;
-
-//Flex
-  int f1, f2;
-  String f1S, f2S;
+//int leftButtonState,rightButtonState;
 
 void setup() {
-  Serial.begin(115200);
-
-  radioSetup();
-  adxlSetup();
   
-  on = true;
-  runningB = true;
   
-  Serial.println( F("Glove started"));
+  Serial.begin(9600);
 
-}  
-
-void loop() {
-
-  radio.begin();
-  radio.setPALevel(RF24_PA_MAX);
-  radio.openWritingPipe(addresses[1]);
-  radio.openReadingPipe(1, addresses[0]);
-
-  delay(5);
-
-  //Running
-     if(runningB){
-       runningS = "1";
-
-  //Accel
-      adxl.readXYZ(&x, &y, &z);
-      double xyz[3];
-      double ax,ay,az;
-      adxl.getAcceleration(xyz);
-      ax = xyz[0];
-      ay = xyz[1];
-      az = xyz[2];
-  
-      xS = String(x);
-      yS = String(y);
-      zS = String(z);
-
-  //Flex
-      f1S = "xxx";
-      f2S = "xxx";
-
-  //Collect
-      data = "<";
-      data.concat(runningS);
-      data.concat("/");
-      data.concat(xS);
-      data.concat("/");
-      data.concat(yS);
-      data.concat("/");
-      data.concat(zS);
-      data.concat("/");
-      data.concat(f1S);
-      data.concat("/");
-      data.concat(f1S);
-      data.concat(">");
-
-  //Send
-    radio.stopListening();
-    //Attempts to send w/ error checking
-    if (!radio.write( &dataOut, sizeof(dataOut) )){
-      Serial.println(F("Failed on sending"));
-    }else{
-      Serial.print(F("Sent: "));
-      Serial.println(data);
-    }
-  }
-
-  delay(15);
-  
-}
-
-void radioSetup(){
-
-  radio.begin();
-  radio.openWritingPipe(addresses[1]);// 00002
-  radio.openReadingPipe(1, addresses[0]);// 00001
-  radio.setPALevel(RF24_PA_MAX);
-  
-}
-
-void adxlSetup(){
+  //pinMode(leftButton, INPUT_PULLUP);
+  //pinMode(rightButton, INPUT_PULLUP);
   
   adxl.powerOn();
 
@@ -146,6 +58,11 @@ void adxlSetup(){
   adxl.setTapDetectionOnX(0);
   adxl.setTapDetectionOnY(0);
   adxl.setTapDetectionOnZ(1);
+ 
+  //set values for what is a tap, and what is a double tap (0-255)
+  adxl.setTapThreshold(50); //62.5mg per increment
+  adxl.setTapDuration(15); //625us per increment
+  adxl.setDoubleTapLatency(80); //1.25ms per increment
   adxl.setDoubleTapWindow(200); //1.25ms per increment
  
   //set values for what is considered freefall (0-255)
@@ -168,9 +85,46 @@ void adxlSetup(){
   adxl.setInterrupt( ADXL345_INT_INACTIVITY_BIT, 1);
 }
 
+void loop() {
 
-
-
-
-
+  on = true;
   
+  //Variable Assignment-------------------------------------------------------------------------
+  
+  //Accel
+  adxl.readXYZ(&x, &y, &z);
+  double xyz[3];
+  double ax,ay,az;
+  adxl.getAcceleration(xyz);
+  ax = xyz[0];
+  ay = xyz[1];
+  az = xyz[2];
+
+  xString = String(x);
+  yString = String(y);
+  zString = String(z);
+
+  //Buttons
+  //leftButtonState = digitalRead(leftButton);
+  //rightButtonState = digitalRead(rightButton);
+ 
+  //Bluetooth Send----------------------------------------------------------------------------
+  
+    Serial.print('<');
+    Serial.print(x);
+    Serial.print('/');
+    Serial.print(y);
+    Serial.print('/');
+    Serial.print(z );
+    //Serial.print('/');
+    //Serial.print(leftButtonState);
+    //Serial.print('/');
+    //Serial.print(rightButtonState);
+    Serial.print('>');
+    Serial.println();  
+ 
+  
+ 
+}
+
+
