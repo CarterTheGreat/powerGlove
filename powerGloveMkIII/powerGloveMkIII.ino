@@ -3,6 +3,7 @@
 #include <SPI.h>
 #include <SoftwareSerial.h>
 #include "RF24.h"
+#include <printf.h>
 
 /*
  * Power Glove Mk. III
@@ -22,8 +23,8 @@
   boolean runningB;
 
 //Comm 
-  RF24 radio(7, 8);\
-  byte addresses[2][6] = {"XXXXX","XXXXX"};
+  RF24 radio(7, 8);
+  const byte addresses[2][6] = {"AAAAA", "AAAAA"};
   String data = " ";
   char dataOut[28] = " ";
   String dataIn;
@@ -42,7 +43,7 @@ void setup() {
   
   Serial.begin(115200);
 
-  Serial.println(F("Glove started"));
+  Serial.println(F("Glove starting"));
   
   adxl.powerOn();
 
@@ -93,18 +94,17 @@ void setup() {
 
   on = true;
   runningB = true;
-
-
-  Serial.println( F("Glove started"));
   
-}
-
-void loop() {
   radio.begin();
   radio.setPALevel(RF24_PA_MAX);
   radio.openWritingPipe(addresses[1]);
   radio.openReadingPipe(1, addresses[0]);
-  
+
+  Serial.println( F("Glove started"));
+}
+
+void loop() {
+   
   delay(5);
  
     //Running
@@ -129,6 +129,9 @@ void loop() {
 
       f1S = "xxx";
       f2S = "xxx";
+
+    //Connection
+      unsigned long t = millis();
       
     //Collect
       data = "<";
@@ -143,20 +146,33 @@ void loop() {
       data.concat(f1S);
       data.concat("/");
       data.concat(f1S);
+      data.concat("/");
+      data.concat(t);
       data.concat(">");
-
-      data.toCharArray(dataOut, 28);
+      
+      data.toCharArray(dataOut, 30);
+      Serial.println(dataOut);
       
     //Send
+      radio.begin();
+      radio.setPALevel(RF24_PA_MAX);
+      radio.openWritingPipe(addresses[1]);
+      radio.openReadingPipe(1, addresses[0]);
+
+      delay(5);
+        
       radio.stopListening();
+      Serial.println("Attempting to send");
+      
       //Attempts to send w/ error checking
       if (!radio.write( &dataOut, sizeof(dataOut) )){
         Serial.println(F("Failed on sending"));
       }else{
         Serial.print(F("Sent: "));
-        Serial.println(data);
+        Serial.println(dataOut);
       }
 
+      
   /*Recieving to implement after successful motor test
   delay(5);
 
@@ -166,6 +182,6 @@ void loop() {
   Serial.println(dataIn);
   */
 
-  delay(100);
+  //delay(100);
   
 }
